@@ -43,7 +43,9 @@ registry_event_global (void *user_data,
                        const struct spa_dict *props)
 {
   PipeWireRemote *remote = user_data;
-  struct pw_type *core_type = pw_core_get_type (remote->core);
+  #if !PW_CHECK_VERSION(0, 2, 9)
+    struct pw_type *core_type = pw_core_get_type (remote->core);
+  #endif
   const struct spa_dict_item *factory_object_type;
   PipeWireGlobal *global;
 
@@ -56,7 +58,11 @@ registry_event_global (void *user_data,
   if (remote->global_added_cb)
     remote->global_added_cb (remote, id, type, props, remote->user_data);
 
-  if (type != core_type->factory)
+  #if PW_CHECK_VERSION(0, 2, 9)
+    if (type != PW_TYPE_INTERFACE_Factory)
+  #else
+    if (type != core_type->factory)
+  #endif
     return;
 
   factory_object_type = spa_dict_lookup_item (props, "factory.type.name");
@@ -98,11 +104,17 @@ static gboolean
 discover_node_factory_sync (PipeWireRemote *remote,
                             GError **error)
 {
-  struct pw_type *core_type = pw_core_get_type (remote->core);
+  #if !PW_CHECK_VERSION(0, 2, 9)
+    struct pw_type *core_type = pw_core_get_type (remote->core);
+  #endif
   struct pw_registry_proxy *registry_proxy;
 
   registry_proxy = pw_core_proxy_get_registry (remote->core_proxy,
+                                             #if PW_CHECK_VERSION(0, 2, 9)
+                                               PW_TYPE_INTERFACE_Registry,
+                                             #else
                                                core_type->registry,
+                                             #endif
                                                PW_VERSION_REGISTRY, 0);
   pw_registry_proxy_add_listener (registry_proxy,
                                   &remote->registry_listener,
